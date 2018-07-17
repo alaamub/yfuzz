@@ -17,9 +17,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/yahoo/yfuzz/pkg/version"
 	"github.com/yahoo/yfuzz/services/yfuzz-server/api"
-	"github.com/yahoo/yfuzz/services/yfuzz-server/auth/athenz"
 	"github.com/yahoo/yfuzz/services/yfuzz-server/config"
 	"github.com/yahoo/yfuzz/services/yfuzz-server/kubernetes"
+	"github.com/yahoo/yfuzz/services/yfuzz-server/plugins"
 )
 
 func main() {
@@ -28,6 +28,18 @@ func main() {
 	jww.INFO.Printf("yFuzz %s, built on %s\n", version.Version, version.Timestamp)
 
 	router := mux.NewRouter()
+
+	// Add some basic wrappers to log requests and catch panics
+	accessFile, err := os.OpenFile(viper.GetString("access-log-file"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(fmt.Errorf("fatal error opening access log file: %s", err))
+	}
+	router.Use(handlers.RecoveryHandler())
+	router.Use(func(h http.Handler) http.Handler {
+		return handlers.CombinedLoggingHandler(accessFile, h)
+	})
+
+	// Set up dependencies for endpoints
 	kubernetesAPI, err := kubernetes.New()
 	if err != nil {
 		panic(fmt.Sprintf("Could not connect to kubernetes API: %s", err.Error()))
@@ -44,6 +56,9 @@ func main() {
 	router.Methods("POST").Path("/jobs").Handler(api.Endpoint(api.CreateJob, dependencies))
 	router.Methods("DELETE").Path("/jobs/{job}").Handler(api.Endpoint(api.DeleteJob, dependencies))
 
+	// Register plugins
+	plugins.Register(router, dependencies)
+
 	// Launch the server
 	port := viper.GetString("port")
 	jww.INFO.Printf("About to listen on %s\n", port)
@@ -56,42 +71,17 @@ func main() {
 
 	tlsConfig := &tls.Config{
 		ClientCAs:  caCertPool,
-		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientAuth: tls.VerifyClientCertIfGiven,
 	}
 	tlsConfig.BuildNameToCertificate()
 
 	server := &http.Server{
 		Addr:      ":" + port,
-		Handler:   addHandlers(router),
+		Handler:   router,
 		TLSConfig: tlsConfig,
 	}
 
 	cert := viper.GetString("tls.cert-file")
 	key := viper.GetString("tls.key-file")
 	jww.FATAL.Println(server.ListenAndServeTLS(cert, key))
-}
-
-// Wrap the router with handlers for logging, panic recovery
-func addHandlers(router http.Handler) http.Handler {
-	accessFile, err := os.OpenFile(viper.GetString("access-log-file"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		panic(fmt.Errorf("fatal error opening access log file: %s", err))
-	}
-
-	serverHandlers := []func(http.Handler) http.Handler{
-		// Write all requests to a log file
-		func(r http.Handler) http.Handler { return handlers.CombinedLoggingHandler(accessFile, r) },
-
-		// Recover from panics and return 500
-		handlers.RecoveryHandler(),
-
-		// Verify that the user is on the whitelist
-		athenz.Verify,
-	}
-
-	for _, h := range serverHandlers {
-		router = h(router)
-	}
-
-	return router
 }

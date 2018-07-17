@@ -4,7 +4,7 @@
 
 A simple command-line utility for [yFuzz](https://github.com/yahoo/yfuzz).
 
-![Diagram](/yfuzz.png)
+![Diagram](./yfuzz.png)
 
 ## Table of Contents
 - [yFuzz CLI](#yfuzz-cli)
@@ -43,6 +43,5 @@ $ yfuzz-cli [COMMAND]
 The yFuzz CLI will read configuration from a file called `cli-config.yaml` (or any other format supported by [viper](https://github.com/spf13/viper)) located either in `$HOME/.yfuzz`, `/etc/yfuzz`, or the current directory.
 
 `api`: yFuzz server URL
-`athenz.user-cert`: Path to an Athenz user x509 certificate for authentication
-`athenz.user-key`: Path to the private key associated with the x509 certificate
-`athenz.ca-cert`: CA Cert used by the Athenz server
+`tls.user-cert`: Path to a user x509 certificate for if using mutual TLS authentication. (optional)
+`tls.user-key`: Path to the private key associated with the x509 certificate. (optional)

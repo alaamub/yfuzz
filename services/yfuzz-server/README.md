@@ -10,6 +10,7 @@ The main API server for [yFuzz](https://github.com/yahoo/yfuzz).
   - [Prerequisites:](#prerequisites)
   - [Install](#install)
   - [Configuration](#configuration)
+  - [Plugins](#plugins)
   - [Usage](#usage)
 
 ## Prerequisites: 
@@ -29,6 +30,10 @@ yFuzz will read configuration from a file called `config.yaml` (or any other for
 Options can also be specified in environment variables with the `YFUZZ_` prefix.
 
 See `config-sample.yaml` for sample configuration.
+
+## Plugins
+A number of plugins to the yFuzz API are supported:
+* [Athenz](plugins/athenz): Authenticate and authorize requests with [Athenz](http://www.athenz.io).
 
 ## Usage
 API endpoints are documented with godoc. 

@@ -11,7 +11,6 @@ import (
 	"net/http"
 
 	"github.com/spf13/viper"
-	"github.com/yahoo/yfuzz/cmd/yfuzz-cli/auth"
 )
 
 type messageHolder struct {
@@ -61,7 +60,7 @@ func delete(endpoint string) error {
 
 // Send a request to the API with the appropriate headers
 func request(req *http.Request, res interface{}) error {
-	client, err := auth.GetClient()
+	client, err := newClient()
 	if err != nil {
 		return err
 	}
